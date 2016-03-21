@@ -1,0 +1,27 @@
+{
+  "name": "butter-streamer-torrent",
+  "version": "0.0.1",
+  "description": "Butter Streamer for torrent streams",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/butterstreamers/butter-streamer-torrent.git"
+  },
+  "keywords": [
+    "butter",
+    "streamer",
+    "torrent"
+  ],
+  "author": "XeonCore",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/butterstreamers/butter-streamer-torrent/issues"
+  },
+  "homepage": "https://github.com/butterstreamers/butter-streamer-torrent#readme",
+  "dependencies": {
+    "butter-base-streamer": "0.0.1"
+  }
+}
