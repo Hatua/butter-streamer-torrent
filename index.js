@@ -24,7 +24,7 @@ function TorrentStreamer(source, options) {
 
 		self._torrentStream.on('ready', function() {
 			if (typeof options.fileIndex !== 'number') {
-				index = self._torrentStream.files.reduce(function(a, b) {
+				var index = self._torrentStream.files.reduce(function(a, b) {
 					return a.length > b.length ? a : b;
 				});
 				index = self._torrentStream.files.indexOf(index);
