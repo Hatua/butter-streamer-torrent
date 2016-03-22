@@ -1,17 +1,29 @@
 var inherits = require('util').inherits
   , torrentStream = require('torrent-stream')
-  , readTorrent = require('read-torrent');
+  , readTorrent = require('read-torrent')
+  , crypto = require('crypto');
 
 var Streamer = require('./base');
 
 /* -- Torrent Streamer -- */
 function TorrentStreamer(source, options) {
-	if(!(this instanceof TorrentStreamer)) 
+	if(!(this instanceof TorrentStreamer))
 		return new TorrentStreamer(source, options);
 
 	Streamer.call(this, options);
 	var self = this;
 	options = options || {};
+
+	if(options.torrent &&
+	   options.torrent.id &&
+	   options.torrent.id.length < 20) {
+		var idRemainder = 20 - options.torrent.id.length;
+		var remainderHash = crypto.createHash('sha1')
+							.update(crypto.pseudoRandomBytes(idRemainder))
+							.digest('hex')
+							.slice(0, idRemainder);
+		options.torrent.id += remainderHash;
+	}
 
 	this._ready = false;
 
@@ -32,9 +44,10 @@ function TorrentStreamer(source, options) {
 
 			self._torrentStream.files[index].select();
 			self.file = self._torrentStream.files[index];
+			self.filesize = self._torrentStream.torrent.files[index].length;
 			self._progress.setLength(self.file.length);
 			self._streamify.resolve(self.file.createReadStream());
-			self._ready = true;
+			self._isReady();
 		})
 	})
 }
@@ -45,6 +58,18 @@ TorrentStreamer.prototype.config = {
 	suffix: /(torrent)/,
 	protocol: /(torrent|magnet)/,
 	type: 'torrent'
+}
+
+TorrentStreamer.prototype._requestProgress = function() {
+	var swarm = this._torrentStream.swarm;
+	return {
+		pieces: swarm.piecesGot,
+		size: this.filesize,
+		peers: swarm.wires.filter(function(wire) {return !wire.peerChoking && wire.peerInterested}).length,
+		seeds: swarm.wires.filter(function(wire) {return !wire.peerInterested}).length,
+		connections: swarm.wires.length,
+		uploadSpeed: swarm.uploadSpeed()
+	};
 }
 
 TorrentStreamer.prototype.seek = function(start, end) {
@@ -70,7 +95,7 @@ TorrentStreamer.prototype.destroy = function() {
 	this._streamify.unresolve();
 	this._ready = false;
 	this._torrentStream = null;
-	this.file = null;
+	this.file = {};
 	this._destroyed = true;
 }
 
