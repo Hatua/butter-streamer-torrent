@@ -57,7 +57,8 @@ TorrentStreamer.prototype.config = {
 	name: 'Torrents and Magnet Links Streamer',
 	suffix: /(torrent)/,
 	protocol: /(torrent|magnet)/,
-	type: 'torrent'
+	type: 'torrent',
+	priority: 50
 }
 
 TorrentStreamer.prototype._requestProgress = function() {
