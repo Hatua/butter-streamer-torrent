@@ -3,7 +3,7 @@ var inherits = require('util').inherits
   , readTorrent = require('read-torrent')
   , crypto = require('crypto');
 
-var Streamer = require('./base');
+var Streamer = require('butter-base-streamer');
 
 /* -- Torrent Streamer -- */
 function TorrentStreamer(source, options) {
