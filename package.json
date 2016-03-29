@@ -1,6 +1,6 @@
 {
   "name": "butter-streamer-torrent",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Butter Streamer for torrent streams",
   "main": "index.js",
   "scripts": {

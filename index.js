@@ -43,11 +43,10 @@ function TorrentStreamer(source, options) {
 			}
 
 			self._torrentStream.files[index].select();
-			self.file = self._torrentStream.files[index];
 			self.filesize = self._torrentStream.torrent.files[index].length;
 			self._progress.setLength(self.file.length);
 			self._streamify.resolve(self.file.createReadStream());
-			self._isReady();
+			self._isReady(self._torrentStream.files[index]);
 		})
 	})
 }
