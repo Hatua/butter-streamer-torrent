@@ -23,9 +23,9 @@ class TorrentStreamer extends Streamer {
         options.torrent.id.length < 20) {
       var idRemainder = 20 - options.torrent.id.length
       var remainderHash = crypto.createHash('sha1')
-        .update(crypto.pseudoRandomBytes(idRemainder))
-        .digest('hex')
-        .slice(0, idRemainder)
+                                .update(crypto.pseudoRandomBytes(idRemainder))
+                                .digest('hex')
+                                .slice(0, idRemainder)
       options.torrent.id += remainderHash
     }
 
@@ -48,13 +48,14 @@ class TorrentStreamer extends Streamer {
         }
 
         this._torrentStream.files[index].select()
-        this.filesize = this._torrentStream.torrent.files[index].length
-        this._progress.setLength(this.file.length)
-        this._streamify.resolve(this.file.createReadStream())
-        this._isReady(this._torrentStream.files[index])
+        this.file = this._torrentStream.torrent.files[index]
+        this.filesize = this.file.length
+
+        this.ready(this.file.createReadStream(), {length: this.filesize})
       })
     })
   }
+
   _requestProgress () {
     var swarm = this._torrentStream.swarm
     return {
@@ -79,19 +80,14 @@ class TorrentStreamer extends Streamer {
       opts.end = end
     }
 
-    this._streamify.unresolve()
-    this._streamify.resolve(this.file.createReadStream(opts))
+    this.reset(this.file.createReadStream(opts), {length: this.file.length})
   }
 
   destroy () {
-    if (this._destroyed) throw new ReferenceError('Streamer already destroyed')
+    super.destroy()
 
     this._torrentStream.destroy()
-    this._streamify.unresolve()
-    this._ready = false
     this._torrentStream = null
-    this.file = {}
-    this._destroyed = true
   }
 }
 
