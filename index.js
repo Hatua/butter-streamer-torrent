@@ -13,57 +13,50 @@ const config = {
 
 /* -- Torrent Streamer -- */
 class TorrentStreamer extends Streamer {
-  constructor (source, options = {}) {
-    super(options, config)
+  constructor (source, options) {
+    super(source, options, config)
 
     this._client = new WebTorrent()
 
-    const onReady = (torrent) => {
-      debug('torrent ready')
-      this._file = options.index ? torrent.files[index] : torrent.files.reduce((file, cur) => (
-        cur.length > file.length ? cur: file
-      ), {length: 0})
+    this.readyPromise = new Promise((accept, reject) => {
+      const onReady = (torrent) => {
+        debug('torrent ready')
 
-      this._file.select()
+        if (options.index) {
+          this._file = torrent.files[options.index]
+        }
 
-      this.ready(this._file.createReadStream(), {length: this._file.length})
-    }
+        if (! this._file) {
+          this._file = torrent.files.reduce((file, cur) => (
+            cur.length > file.length ? cur: file), {length: 0}
+          )
+        }
 
-    this._client.add(source, torrent => {
-      debug('got torrent', torrent)
-      this._torrent = torrent
-      torrent._selections = [] // HACK https://github.com/webtorrent/webtorrent/issues/164
+        this._file.select()
 
-      if (torrent.ready) {
-        onReady(torrent)
-      } else {
-        torrent.on('ready', () => onReady(torrent))
+        accept(this._file)
       }
 
-      torrent.on('download', bytes => {
-//        debug('progress: ' + torrent.progress)
-      })
+      this._client.add(source, torrent => {
+        debug('got torrent', torrent)
+        this._torrent = torrent
+        torrent._selections = [] // HACK https://github.com/webtorrent/webtorrent/issues/164
 
-      torrent.on('done', () => debug('TORRENT DONE'))
+        if (torrent.ready) {
+          onReady(torrent)
+        } else {
+          torrent.on('ready', () => onReady(torrent))
+        }
+      })
     })
   }
 
-  seek (start, end = 0) {
-    if (this._destroyed) throw new ReferenceError('Streamer already destroyed')
-    if (!this._ready) return
-
-    var opts = {
-      start: start
-    }
-
-    if (end) {
-      opts.end = end
-    }
-
-    debug('seek', opts)
-    this.reset(this._file.createReadStream(opts), {
-      length: this._file.length - start
-    })
+  createStream(source, opts) {
+    return this.readyPromise
+               .then(file => ({
+                 stream: file.createReadStream(opts),
+                 length: file.length - opts.start
+               }))
   }
 
   destroy () {
