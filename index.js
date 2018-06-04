@@ -38,7 +38,6 @@ class TorrentStreamer extends Streamer {
       }
 
       this._client.add(source, torrent => {
-        debug('got torrent', torrent)
         this._torrent = torrent
         torrent._selections = [] // HACK https://github.com/webtorrent/webtorrent/issues/164
 
