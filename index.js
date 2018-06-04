@@ -1,8 +1,8 @@
-const torrentStream = require('torrent-stream')
-const readTorrent = require('read-torrent')
+const WebTorrent = require('webtorrent')
 const crypto = require('crypto')
+const debug = require('debug')('butter-streamer-torrent')
 
-const Streamer = require('butter-base-streamer')
+const Streamer = require('butter-streamer')
 const config = {
   name: 'Torrents and Magnet Links Streamer',
   suffix: /(torrent)/,
@@ -13,62 +13,42 @@ const config = {
 
 /* -- Torrent Streamer -- */
 class TorrentStreamer extends Streamer {
-  constructor (source, options) {
-    super(options)
-    this.config = config
-    options = options || {}
+  constructor (source, options = {}) {
+    super(options, config)
 
-    if (options.torrent &&
-        options.torrent.id &&
-        options.torrent.id.length < 20) {
-      var idRemainder = 20 - options.torrent.id.length
-      var remainderHash = crypto.createHash('sha1')
-                                .update(crypto.pseudoRandomBytes(idRemainder))
-                                .digest('hex')
-                                .slice(0, idRemainder)
-      options.torrent.id += remainderHash
+    this._client = new WebTorrent()
+
+    const onReady = (torrent) => {
+      debug('torrent ready')
+      this._file = options.index ? torrent.files[index] : torrent.files.reduce((file, cur) => (
+        cur.length > file.length ? cur: file
+      ), {length: 0})
+
+      this._file.select()
+
+      this.ready(this._file.createReadStream(), {length: this._file.length})
     }
 
-    this._ready = false
+    this._client.add(source, torrent => {
+      debug('got torrent', torrent)
+      this._torrent = torrent
+      torrent._selections = [] // HACK https://github.com/webtorrent/webtorrent/issues/164
 
-    readTorrent(source, (err, torrent) => {
-      if (err) throw err
+      if (torrent.ready) {
+        onReady(torrent)
+      } else {
+        torrent.on('ready', () => onReady(torrent))
+      }
 
-      this._torrentStream = torrentStream(torrent, options.torrent)
-      this._torrentStream.on('uninterested', () => (this._torrentStream.swarm.pause()))
-      this._torrentStream.on('interested', () => (this._torrentStream.swarm.resume()))
-
-      this._torrentStream.on('ready', () => {
-        if (typeof options.fileIndex !== 'number') {
-          var index = this._torrentStream.files.reduce((a, b) => (
-            a.length > b.length ? a : b
-          )
-          )
-          index = this._torrentStream.files.indexOf(index)
-        }
-
-        this._torrentStream.files[index].select()
-        this.file = this._torrentStream.torrent.files[index]
-        this.filesize = this.file.length
-
-        this.ready(this.file.createReadStream(), {length: this.filesize})
+      torrent.on('download', bytes => {
+//        debug('progress: ' + torrent.progress)
       })
+
+      torrent.on('done', () => debug('TORRENT DONE'))
     })
   }
 
-  _requestProgress () {
-    var swarm = this._torrentStream.swarm
-    return {
-      pieces: swarm.piecesGot,
-      size: this.filesize,
-      peers: swarm.wires.filter(wire => (!wire.peerChoking && wire.peerInterested)).length,
-      seeds: swarm.wires.filter(wire => (!wire.peerInterested)).length,
-      connections: swarm.wires.length,
-      uploadSpeed: swarm.uploadSpeed()
-    }
-  }
-
-  seek (start, end) {
+  seek (start, end = 0) {
     if (this._destroyed) throw new ReferenceError('Streamer already destroyed')
     if (!this._ready) return
 
@@ -76,18 +56,26 @@ class TorrentStreamer extends Streamer {
       start: start
     }
 
-    if (end !== undefined) {
+    if (end) {
       opts.end = end
     }
 
-    this.reset(this.file.createReadStream(opts), {length: this.file.length})
+    debug('seek', opts)
+    this.reset(this._file.createReadStream(opts), {
+      length: this._file.length - start
+    })
   }
 
   destroy () {
     super.destroy()
 
-    this._torrentStream.destroy()
-    this._torrentStream = null
+    if (this._file) this._file.deselect()
+    if (this._torrent) this._torrent.destroy()
+    if (this._client) this._client.destroy()
+
+    this._file = null
+    this._torrent = null
+    this._client = null
   }
 }
 
