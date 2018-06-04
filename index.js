@@ -54,7 +54,11 @@ class TorrentStreamer extends Streamer {
     return this.readyPromise
                .then(file => ({
                  stream: file.createReadStream(opts),
-                 length: file.length - opts ? opts.start : 0
+                 file: {
+                   name: file.name,
+                   type: 'video', /* HACK, get correct type */
+                   length: file.length - opts ? opts.start : 0
+                 }
                }))
   }
 
