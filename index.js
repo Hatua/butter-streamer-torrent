@@ -26,7 +26,7 @@ class TorrentStreamer extends Streamer {
         this.name = torrent.name
 
         debug('torrent ready')
-        resolve(torrent.files)
+        resolve(torrent.files.sort((a, b) => b.length - a.length ))
       }
 
       this._client.add(source, torrent => {
