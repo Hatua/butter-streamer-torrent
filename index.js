@@ -15,26 +15,18 @@ const config = {
 class TorrentStreamer extends Streamer {
   constructor (source, options) {
     super(source, options, config)
+  }
 
+  initialize (source, options) {
     this._client = new WebTorrent()
 
-    this.readyPromise = new Promise((accept, reject) => {
+    return new Promise((resolve, reject) => {
       const onReady = (torrent) => {
+        this._torrent = torrent
+        this.name = torrent.name
+
         debug('torrent ready')
-
-        if (options.index) {
-          this._file = torrent.files[options.index]
-        }
-
-        if (! this._file) {
-          this._file = torrent.files.reduce((file, cur) => (
-            cur.length > file.length ? cur: file), {length: 0}
-          )
-        }
-
-        this._file.select()
-
-        accept(this._file)
+        resolve(torrent.files.sort((a, b) => b.length - a.length ))
       }
 
       this._client.add(source, torrent => {
@@ -50,22 +42,9 @@ class TorrentStreamer extends Streamer {
     })
   }
 
-  createStream(source, opts) {
-    return this.readyPromise
-               .then(file => ({
-                 stream: file.createReadStream(opts),
-                 file: {
-                   name: file.name,
-                   type: 'video', /* HACK, get correct type */
-                   length: file.length - opts ? opts.start : 0
-                 }
-               }))
-  }
-
   destroy () {
     super.destroy()
 
-    if (this._file) this._file.deselect()
     if (this._torrent) this._torrent.destroy()
     if (this._client) this._client.destroy()
 
