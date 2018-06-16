@@ -29,6 +29,7 @@
     "butter-base-streamer": "^0.0.2",
     "butter-streamer": "butterstreamers/butter-streamer",
     "debug": "^3.1.0",
+    "deep-equal": "^1.0.1",
     "webtorrent": "^0.100.0"
   },
   "devDependencies": {
